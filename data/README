@@ -1,0 +1,150 @@
+
+Sources for some standard datasets:
+	http://www-psych.stanford.edu/~andreas/Time-Series/SantaFe.html
+	http://neural.cs.nthu.edu.tw/jang/benchmark/
+	http://www.dice.ucl.ac.be/neural-nets/Research/Projects/ELENA/elena.htm
+	ftp://ftp.ngdc.noaa.gov/STP/SOLAR_DATA/SUNSPOT_NUMBERS/YEARLY.PLT
+
+To produce the NOAA sunspot series (annual 1700-2004):
+	wget ftp://ftp.ngdc.noaa.gov/STP/SOLAR_DATA/SUNSPOT_NUMBERS/YEARLY.PLT
+	# normalize into [0,1] as is standard in the sunspot literature, see
+	# http://www.uwasa.fi/cs/publications/2NWGA/node75.html
+	# Note that we should #define NORM2 to compare with literature results,
+	# though this breaks #define PARANOID
+	awk '{print $1/190.2}' <YEARLY.PLT >/tmp/normsun
+	# make the input file of lags
+	makeinputs.pl --regress  --nlags=10 --inputfile=/tmp/normsun >data/sunspots
+	# run lgp
+	lgp --inputfile=data/sunspots --train=0/220 --validate=220/257 --test=257/295 --verbose --popsize=10000 --maxtrials=100
+
+To produce the NH3 laser series (extended set, 10000 points):
+	wget http://www-psych.stanford.edu/~andreas/Time-Series/SantaFe/A.cont
+	# normalize into [0,1]
+	awk '{print $1/255}' <A.cont >/tmp/laser
+	makeinputs.pl --regress  --nlags=40 --inputfile=/tmp/laser >data/laser
+    lgp --inputfile=data/laser --train=0/800 --validate=800/900 --test=900/1000 --popsize=100000 --verbose
+
+
+our quartic regression is x^4+x^3+x^2+x in the range [-1,1]:
+	perl -e 'for ( $x = -1.0 ; $x<=1.0 ; $x+= 0.002 ) { print $x*$x*$x*$x + $x*$x*$x + $x*$x + $x,"\n"; }' >/tmp/quartic
+	makeinputs.pl --regress --nlags=10 --inputfile=/tmp/quartic >data/quartic
+
+Koza's version of quartic regression (as documented in
+www.genetic-programming.com/c2003gpvideo1.pdf) is different, but we do
+well on his version.  He has only 1 lag:
+	lgp --inputfile=data/kozaquartic --train=0/21 --test=21/21 --verbose --popsize=10000
+
+The mispricings come from cointegrating regressions that minimize
+the variance ratio statistic vp25c(1) (field 12).
+(See ~/forex/svn/statarb/results/README)
+	cd ~/forex/svn/statarb
+	statarb.pl --inputfile=nasdaq100_daily --target=0 --indep=6,7,34 --trainsize=300 --commissionpershare=0.003 --strategy=ar --order=5 --windowsize=100 --plot=pl
+	cd ~/genetic/lgp
+	# could also specify --takediffs in call to makeinputs.pl, to evolve
+	# on the differences of the mispricing 
+	makeinputs.pl --classify --nlags=10 --inputfile=/tmp/mispricing > data/mispricing0
+	lgp --inputfile=data/mispricing0 --train=0/300 --test=300/427 
+
+Or for --target=1 and --target=2, replace the statarb call above with:
+	statarb.pl --inputfile=nasdaq100_daily --target=1 --indep=5,34,65 --trainsize=300 --commissionpershare=0.003 --strategy=ar --order=5 --windowsize=100 --plot=pl
+	statarb.pl --inputfile=nasdaq100_daily --target=2 --indep=28,49,80 --trainsize=300 --commissionpershare=0.003 --strategy=ar --order=5 --windowsize=100 --plot=pl
+
+
+Random walk sanity check, validation error should be around 0.50, not much less:
+	randomwalk --length=1210 >/tmp/randwalk
+	makeinputs.pl --classify --nlags=10 --inputfile=/tmp/randwalk > data/randwalk
+	lgp --inputfile=data/randwalk --train=0/1000 --validate=1000/1100 --test=1100/1200  --maxgenerations=10 --verbose
+
+First order diffs of random walk, test fitness should be around 0.50,
+certainly not much lower:
+    randomwalk --length=1010 >/tmp/randwalk
+    makeinputs.pl --takediffs --classify --nlags=10 --inputfile=/tmp/randwalk > data/randwalkdiffs
+    lgp --inputfile=data/randwalkdiffs --train=0/500 --validate=500/999 --test=999/999  --maxgenerations=10 --verbose
+
+QQQQ midprice raw:  (DOESN'T WORK. NOT ENOUGH DATA?)
+	awk '{print 0.5*($1+$2)}' </home/egullich/forex/svn/rl/data/QQQQ_daily_1200 >/tmp/qqqq
+	makeinputs.pl --classify --nlags=10 --inputfile=/tmp/qqqq > data/qqqq
+	lgp --inputfile=data/qqqq --train=0/300 --test=300/508 --maxgenerations=10
+(and providing lgp decompiles best individual to f.c)
+	make decompiled
+	decompiled --inputfile=data/qqqq --train=0/508 --dump=indicator > /tmp/tail
+	# replace the lags that were trimmed:
+	yes '0.0' | head -9 >/tmp/head
+	cat /tmp/head /tmp/tail >/tmp/ind
+	pushd ~/forex/svn/rl
+	trade -i QQQQ_daily_1200 -t 0/518 -I /tmp/ind -v --plot=pl
+	popd
+
+QQQQ midprice first order differences: (DOESN'T WORK. NOT ENOUGH DATA?)
+	awk '{print 0.5*($1+$2)}' </home/egullich/forex/svn/rl/data/QQQQ_daily_1200 >/tmp/qqqq 
+    makeinputs.pl --takediffs --normalize --outlier=3.0 --train=0/300 --classify --nlags=10 --inputfile=/tmp/qqqq > data/qqqqdiffs
+    lgp --inputfile=data/qqqqdiffs --train=0/300 --validate=300/508 --test=508/508 --maxgenerations=10 --verbose --popsize=10000 --earlystopping=0.52 --maxtrials=1
+(and providing lgp decompiles best individual to f.c)
+    make decompiled
+    decompiled --inputfile=data/qqqqdiffs --train=0/508 --dump=indicator > /tmp/tail
+    # replace the lags that were trimmed
+    yes '0.0' | head -9 >/tmp/head
+    cat /tmp/head /tmp/tail >/tmp/ind
+    pushd ~/forex/svn/rl
+    trade -i QQQQ_daily_1200 -t 0/518 -I /tmp/ind -v --plot=pl
+	popd
+
+differences of a mispricing
+    cd ~/forex/svn/statarb
+	# generate the mispricing (in file /tmp/mispricing)
+    statarb.pl --inputfile=nasdaq100_daily --target=0 --indep=6,7,34 --trainsize=300 --commissionpershare=0.003 --strategy=ar --order=5 --windowsize=100 --plot=pl
+    cd ~/genetic/lgp
+    # could also specify --takediffs in call to makeinputs.pl, to evolve
+    # on the differences of the mispricing
+    makeinputs.pl --takediffs --classify --nlags=10 --inputfile=/tmp/mispricing > data/mispricingdiffs0
+	# or normalized diffs:
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/300 --inputfile=/tmp/mispricing > data/mispricingdiffs0
+    lgp --inputfile=data/mispricingdiffs0 --train=0/300 --validate=300/400 --test=400/426 --maxgenerations=50 --maxtrials=1 --earlystopping=0.525 --dump=error --verbose > /tmp/hits
+
+
+Try higher frequency (hourly) QQQQ normalized differences:
+We close inter-day gaps as we will be out of the market at night:
+	# on 4x.to:
+	~/itch/closegaps.pl < /hdc1/1min/QQQQ  | grep ":00:00" | cut -d' ' -f3,4 | awk '{print 0.5*($1+$2)}' >/tmp/qqqqhourly
+	then on laptop:
+	# cd ~/genetic/lgp
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/3000  --inputfile=/tmp/qqqqhourly >data/qqqqhourlydiffs
+	nice ./lgp --inputfile=data/qqqqhourlydiffs --mutation_prob=0.95 --popsize=10000 --train=0/3000 --validate=3000/3315 --test=3315/3629 --maxgenerations=10 --verbose --earlystopping=0.475
+
+--------------------------------------
+
+Use yahoo close of day, so we have enough data (1000 points) to train on:
+[perhaps --popsize=100000 would be better]
+[should validation set be larger, prevent inferior individuals in ensemble?]
+is --bagging consistently better?
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/1000  --inputfile=/tmp/qqqq > data/qqqqdiffs_yahoo
+    nice ./lgp --inputfile=data/qqqqdiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/1000 --validate=1000/1095 --test=1095/1190 --maxgenerations=10 --verbose --earlystopping=0.475  --dumpindicator >/tmp/tail 
+    nice ./lgp --inputfile=data/spydiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/1000 --validate=1000/1095 --test=1095/1190 --maxgenerations=10 --verbose --earlystopping=0.475  --dumpindicator >/tmp/tail
+    nice ./lgp --inputfile=data/diadiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/1000 --validate=1000/1095 --test=1095/1190 --maxgenerations=10 --verbose --earlystopping=0.475  --dumpindicator >/tmp/tail
+
+MSFT daily close (to 12 Feb 06 from yahoo)
+    nice ./lgp --inputfile=data/msft --mutation_prob=0.95 --popsize=100000 --train=0/1000 --validate=1000/1100 --test=1100/1190  --maxgenerations=10 --verbose --earlystopping=0.475
+
+EURUSD daily close (to 14 Feb 06, from www.dukascopy.com)
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/2500  --inputfile=~/forex/gp/data/dukascopy/eurusd_close >data/eurusd
+	nice ./lgp --inputfile=data/eurusd --mutation_prob=0.95 --popsize=100000 --train=0/2500 --validate=2500/2756 --test=2756/3012 --maxgenerations=10 --verbose --earlystopping=0.475
+
+XAUUSD daily close (to 14 Feb 06, from www.dukascopy.com)
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/2500  --inputfile=~/forex/gp/data/dukascopy/xauusd_close >data/xauusd
+	nice ./lgp --inputfile=data/xauusd --mutation_prob=0.95 --popsize=100000 --train=0/2500 --validate=2500/2756 --test=2756/3012 --maxgenerations=10 --verbose --earlystopping=0.475
+
+
+trading on a yahoo series (WHY DON'T lgp AND trade HIT RATES AGREE??)
+	makeinputs.pl --takediffs --classify --nlags=10 --normalize --train=0/900 --inputfile=/tmp/qqqq > data/qqqqdiffs_yahoo
+    lgp --inputfile=data/qqqqdiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/900 --validate=900/1095 --test=1095/1190 --maxgenerations=10 --verbose --earlystopping=0.475 --dump=indicator > /tmp/tail
+    # replace the lags that were trimmed
+    yes '0.0' | head -9 >/tmp/head
+    cat /tmp/head /tmp/tail >/tmp/ind
+    pushd ~/forex/svn/rl
+	bivariate.pl --spread=0.0 </tmp/qqqq >/tmp/qqqq_bi
+    trade --inputseries=/tmp/qqqq_bi --indicator=/tmp/ind --test=0/1190 --verbose --plot=pl
+    popd
+
+some cluster Athlon XP 2200 machines (from athlon.pl):
+ia15112 ia12530 ia15241 ia15115 ia15120 ia15114 ia15146
+

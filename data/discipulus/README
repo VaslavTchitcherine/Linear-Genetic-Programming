@@ -1,0 +1,43 @@
+
+Data from the demo version of Disipulus.
+
+from "Discipulus Lite Tutorials.pdf":
+
+   The Gaussian Classes. For the Gaussian problem, the classes are gener-
+   ated mathematically. Class zero has eight inputs all with normal distri-
+   bution with zero mean and standard deviation equal to one. Class one
+   likewise has eight inputs, all with normal distributions with zero mean
+   but with a standard deviation equal to two. Thus, the two classes overlap
+   considerably (in technical terms, they are linearly inseparable), making it
+   difficult to distinguish among different class members.
+
+   False Inputs. The Gaussian problem is a well studied problem. Nor-
+   mally researchers have studied this problem with only eight inputs.
+   n our version of the Gaussian problem, we have made the problem much
+   more difficult by adding sixteen inputs that are, for lack of a better term,
+   "false" inputs. That is, these sixteen inputs are unrelated to the output.
+   So in this problem, DiscipulusTM must first determine what inputs are the
+   good ones and then determine how to use the good ones in a program
+   that will produce useful results.
+   Past Work on the Gaussian Problem. The Gaussian problem is a well
+   studied benchmark problem. Even without the false inputs, a result of
+   83% correct classification on the validation set is good. The false inputs
+   make the problem considerably more difficult.
+   Better results than 83% have been obtained but it took over 4,500,000
+   training instances to do so (for this problem, we have given DiscipulusTM
+   only 1,000 training examples). For more information about this data set,
+   see ESPRIT Basic Research Project Number 6891, ELENA, Enhanced
+   Learning for Evolutive Neural Architecture, June 30, 1995. It is avail-
+   able on the World Wide Web at http://www.dice.ucl.ac.be/neural-
+   nets/ELENA/ELENA.html.
+   (This seems to have moved to:
+     http://www.dice.ucl.ac.be/neural-nets/Research/Projects/ELENA/elena.htm)
+
+See also:
+http://www.dice.ucl.ac.be/neural-nets/Research/Projects/ELENA/databases/ARTIFICIAL/gaussian/gaussian.txt
+
+And lgp can get over 80% out of sample (i.e. validation error < 0.20)
+within a few trials:
+	lgp --inputfile=data/discipulus/gaussian --train=0/500 --validate=500/999 --test=999/999 --maxgenerations=100 --popsize=100000 --verbose
+where the file gaussian is a catenation of the Discipulus training,
+validation, and test sets

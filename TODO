@@ -1,0 +1,186 @@
+
+--paranoid flag, why is 5parity crashing
+
+doubles and longs
+compile warnings
+
+mulitple runs on different input bag
+how to combine the best from each run?
+metalearning in weka:  stacking, bagging, boosting
+after each trial, save the best individual (output its code) in an ensemble.
+How to combine these?
+
+save as machine code rather than decompiled C
+
+optimize by removing 1 instruction at a time,
+trying with a large number of random vectors to see if it makes a difference
+
+lgp and gp with genotick ideas:
+    online (one pass)
+    aging of programs
+    must return inverse prediction on mirrored data
+    kill the individual immediately if disagree (and seed pop with good ones)
+inputs:
+    lags (or wavelets) of many cryptos
+
+cartesian gp on CUDA
+
+pile up:
+wealth curve from each ensemble member?
+indicator from each ensemble member
+
+use gcc optimization for intron removal:
+    gcc -O4 -c f.c ; objdump -S f.o
+[f.c should just contain lgp0() function]
+
+--boosting
+
+make validation set as large as training, say 40:40:20  or 8:3:1
+to avoid spuriously good performance on too short a validation set,
+causing insufficiently general individuals to be added to ensemble?
+ lgp --inputfile=data/qqqqdiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/800 --validate=800/1095 --test=1095/1190 --maxgenerations=10 --verbose --earlystopping=0.475 --dump=indicator > /tmp/ind
+
+why does eurusd work so well?
+
+ssh ia15115 nice ./lgp --inputfile=data/qqqqdiffs_yahoo20lags  --mutation_prob=0.95 --popsize=100000 --train=0/1000 --validate=1000/1090  --test=1090/1180 --maxgenerations=10 --verbose --earlystopping=0.475  1>/dev/null 2>/tmp/out_bigpop &
+
+boosting problems: 
+nice ./lgp --inputfile=data/qqqqdiffs_yahoo --mutation_prob=0.95 --popsize=10000 --train=0/600 --validate=600/845 --test=845/1090 --maxgenerations=10 --verbose --earlystopping=0.475 --boosting -D 
+how can anyone get added to ensemble when validation performance <0.5:
+ensemble (size 1) errors (train validate test): 0.515000 0.518367 0.551020
+
+try more than 10 lags, and bagging for qqqqhourlydiffs
+
+adaboost
+logitboost.pdf p.3
+brownboost.pdf p.2
+MeiRae03.pdf p.6
+
+factorial experiment (multiple trials?)
+	popsize 10000 or 100000
+	bagging on/off
+	early stopping value {0.4,0.41,...,0.49}
+	more lags (10?  20?)
+run on SPY, DIA, and QQQQ daily close normalized diffs
+
+does ensemble trained on yahoo daily close work on island daily noon?
+
+different hour phases (if we had enough Island data)
+
+lgp_cluster
+parallel trials with --maxtrials=1 across cluster nodes
+each node returns output vector in range [0,teststop] by socket
+caller does the ensembling
+[WON'T WORK WHEN BOOSTING, pdf for bootstrap adjusted each run]
+
+--boosting
+boosting to form members of the ensemble
+each trial gets a different training set, sampled with replacement
+try also arc-x4 (breiman98arcing.pdf)
+how does this compare to DSS?
+
+cree suggests feeding in lags of multiple series, not just one
+
+ADFs
+call a block of code that ends with a return (can be recursive?)
+or
+add CALL and RET instructions to code
+must keep track of call depth, avoid call stack over or underflow
+EB cw       CALL rel16      near call, relative
+
+get rid of THRESHOLD, it should always be 0.0
+
+permute order of all training and validation lines
+
+less brutal earlystopping
+
+intron removal
+brameier01effective.pdf
+(after termination, or duing breeding?)
+perhaps only when MAXCROSSOVERTRIALS exceeded bue to bloat?
+is execution or results improved if introns are always removed?
+
+gathercol DSS
+DSS subset size 32
+eval fitness on a subset of the training set
+subset selected based on:  age, difficulty, or randomly
+Does it reduce bloat?
+
+optimizing constants:
+How Discipulus Optimizes Constants in Interactive Evaluator
+Discipulus optimizes constants using an Evolution Strategies (ES)
+algorithm with adaptive step sizes. This is a very powerful and efficient
+real valued constant optimizing algorithm.
+
+brameier evolving teams
+
+crossover rate of less than 1.0 (discipulus uses 0.5)
+
+randomize max program size (like nregisters)
+
+over a large number of trials, correlation between:
+	nregisters and test performance
+	training and test performance
+look at what sequences of instructions occur frequently
+look at what inputs are used in solutions
+
+can we measure diversity in pop and use this as a termination condition?
+
+use pop selection and child replacement from gp
+ensures avg pop fitness will always increase
+
+can we avoid the copy of the input data by using a segment register?
+(probably doesn't matter to performance)
+
+parsimony pressure (p.121)
+Discipulus applies parsimony pressure by randomly choosing a portion
+of tournaments for application of parsimony. For each tournament
+chosen, Discipulus determines if the fitness of the two evolved programs
+in the tournament is within a certain threshold. If the difference in the
+two programs' fitness is less than that threshold percentage, then
+parsimony is applied to that tournament by selecting the shorter of the
+two programs as the tournament winner.
+
+error to break ties in hit rates when selecting parents
+
+try predicting (normalized?) diffs of mispricing, which remains
+constant out of sample
+
+code is *very* much faster on an Athlon XP 1900+
+	laptop:  275 sec
+	4x: 
+	ia12030: 77 sec
+so try trials in parallel on Athlon cluster nodes, lgp_cluster.pl
+
+instead of train and test:  crossvalidation (Kuncheva p.9)
+
+validation set to stop evolving when validation set performance decreases
+due to overfitting
+
+mutate that changes instruction length
+
+save initial population (to speed up experiments when --initialfitness)
+
+plot avg program size by generation to check for bloat
+
+softice cntl-d on discipulus... what header and footer do they use??
+
+change params when there are many gens without improvement
+
+Try random evolution with all instructions
+/home/egullich/genetic/papers/nordin/bf_thesis.pdf
+(more than FPU needed for metalevel)
+
+mutate value of a constant with annealing
+
+analyze sequences of instructions (pairs, triples?)
+that occur frequently in successful solutions, e.g. sqrt(abs(x))
+(cf. wbl_repeat_linear.pdf)
+
+questions for frank:
+1) what about input range requirement [-1.0,1.0] for f2xm1
+   result undefined if input out of range
+2) why are comparisons useful, FCMOVB and FCMOVNB must immediately
+   follow FCOMI, otherwise CF is reset by any intervening arithmetic ops.
+
+

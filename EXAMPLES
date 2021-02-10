@@ -1,0 +1,17 @@
+
+These are examples of classification and regression using some of the
+files in the data directory.
+
+The final column is the training value.  
+For classifcation problems, the training value must be 1 or -1.
+For regression problems, the training value is a floating point number.
+
+data/5parity
+Classify the parity of a 5 bit sequence.  
+Note that the test range is null, as the program will find
+a perfect classifier, and all 32 bit patterns are required to
+do so.
+	    lgp --inputfile=data/5parity --train=0/32 --test=32/32 --verbose
+
+
+
